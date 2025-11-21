@@ -37,11 +37,14 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
         }
 
         .header h1 {
             color: #667eea;
             font-size: 28px;
+            margin-bottom: 5px;
         }
 
         .db-status {
@@ -51,12 +54,14 @@
             border-radius: 20px;
             font-size: 12px;
             font-weight: 600;
+            display: inline-block;
         }
 
         .header-buttons {
             display: flex;
             gap: 10px;
             align-items: center;
+            flex-wrap: wrap;
         }
 
         .btn {
@@ -375,6 +380,132 @@
             margin-top: 20px;
         }
 
+        /* POS STYLES */
+        .pos-modal .modal-content {
+            max-width: 1200px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pos-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .products-grid {
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .product-card {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+        }
+
+        .product-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(102, 126, 234, 0.2);
+        }
+
+        .product-price {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .cart-section {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cart-items {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .cart-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #eee;
+        }
+
+        .cart-item-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .quantity-btn {
+            width: 25px;
+            height: 25px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #f5f5f5;
+            cursor: pointer;
+        }
+
+        /* Stile per input sconto nel carrello */
+        .discount-input-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin: 0 10px;
+        }
+
+        .discount-input-group label {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .discount-input {
+            width: 50px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .cart-item-price-block {
+            text-align: right;
+        }
+
+        .original-price {
+            text-decoration: line-through;
+            color: #999;
+            font-size: 12px;
+            display: block;
+        }
+
+        .cart-total {
+            font-size: 28px;
+            font-weight: bold;
+            text-align: right;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
         .loading {
             text-align: center;
             padding: 40px;
@@ -417,6 +548,10 @@
             }
 
             .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pos-content {
                 grid-template-columns: 1fr;
             }
         }
@@ -531,6 +666,37 @@
         </div>
     </div>
 
+    <div id="posModal" class="modal pos-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🛒 Punto Vendita</h3>
+                <button class="close-btn" onclick="closePOS()">&times;</button>
+            </div>
+            <div class="pos-content">
+                <div class="products-grid">
+                    <input type="text" class="search-bar" placeholder="🔍 Cerca prodotti..." 
+                           id="posSearch" oninput="renderPOSProducts()" style="margin-bottom: 20px; width: 100%;">
+                    <div id="posProducts"></div>
+                </div>
+                <div class="cart-section">
+                    <h3 style="margin-bottom: 15px;">Carrello</h3>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label>Cliente</label>
+                        <select id="posCustomer" style="width: 100%;">
+                            <option value="">Cliente Generico</option>
+                        </select>
+                    </div>
+                    <div class="cart-items" id="cartItems"></div>
+                    <div class="cart-total" id="cartTotal">€0.00</div>
+                    <button class="btn btn-success" style="width: 100%; padding: 15px; font-size: 18px;" 
+                            onclick="completeSale()">
+                        💰 Completa Vendita
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ========================================
         // CONFIGURAZIONE INDEXEDDB CON DEXIE.JS
@@ -539,11 +705,11 @@
         // Inizializza database Dexie
         const db = new Dexie('GestionaleProDB');
 
-        // Definizione schema database (versione 1)
+        // Definizione schema database
         db.version(1).stores({
             config: 'key',
             clienti: '++id, nome, email, telefono, *searchTerms',
-            prodotti: '++id, nome, prezzo, categoria, *searchTerms',
+            prodotti: '++id, nome, prezzo, categoria, stock, quantita, *searchTerms',
             vendite: '++id, cliente, data, totale, *searchTerms',
             documenti: '++id, tipo, numero, cliente, data, *searchTerms'
         });
@@ -597,6 +763,7 @@
         let searchTerm = '';
         let currentPage = 1;
         let itemsPerPage = 20;
+        let cart = []; // Per il POS
 
         // ========================================
         // FUNZIONI DATABASE INDEXEDDB
@@ -609,7 +776,6 @@
                 if (savedConfig) {
                     config = savedConfig.value;
                 } else {
-                    // Salva config default
                     await db.config.put({ key: 'app', value: config });
                 }
             } catch (error) {
@@ -626,7 +792,7 @@
             }
         }
 
-        // Genera termini di ricerca per indicizzazione full-text
+        // Genera termini di ricerca
         function generateSearchTerms(item) {
             const terms = [];
             for (let value of Object.values(item)) {
@@ -634,12 +800,10 @@
                     terms.push(...value.toLowerCase().split(/\s+/));
                 }
             }
-            return [...new Set(terms)]; // Rimuovi duplicati
+            return [...new Set(terms)];
         }
 
         // CRUD Operations
-
-        // CREATE - Aggiungi elemento
         async function addItem(module, item) {
             try {
                 item.searchTerms = generateSearchTerms(item);
@@ -652,13 +816,11 @@
             }
         }
 
-        // READ - Leggi elementi con paginazione e ricerca
         async function getItems(module, page = 1, search = '') {
             try {
                 let collection = db[module];
 
                 if (search) {
-                    // Ricerca full-text usando l'indice searchTerms
                     const searchLower = search.toLowerCase();
                     collection = collection.where('searchTerms').equals(searchLower);
                 }
@@ -669,7 +831,7 @@
                 const items = await collection
                     .offset(offset)
                     .limit(itemsPerPage)
-                    .reverse() // Ultimi inseriti per primi
+                    .reverse()
                     .toArray();
 
                 return {
@@ -684,7 +846,6 @@
             }
         }
 
-        // READ ALL - Tutti gli elementi (per export/stats)
         async function getAllItems(module) {
             try {
                 return await db[module].toArray();
@@ -694,7 +855,6 @@
             }
         }
 
-        // UPDATE - Aggiorna elemento
         async function updateItem(module, id, updates) {
             try {
                 updates.searchTerms = generateSearchTerms(updates);
@@ -707,7 +867,6 @@
             }
         }
 
-        // DELETE - Elimina elemento
         async function deleteItem(module, id) {
             try {
                 await db[module].delete(id);
@@ -718,7 +877,6 @@
             }
         }
 
-        // Conta elementi per dashboard
         async function getCounts() {
             try {
                 return {
@@ -733,7 +891,6 @@
             }
         }
 
-        // Calcola totale vendite
         async function getTotalSales() {
             try {
                 const vendite = await db.vendite.toArray();
@@ -748,7 +905,6 @@
         // UI RENDERING
         // ========================================
 
-        // Inizializzazione
         async function init() {
             try {
                 await loadConfig();
@@ -767,7 +923,6 @@
             }
         }
 
-        // Render navigazione
         function renderNavigation() {
             const nav = document.getElementById('navigation');
             let html = `
@@ -791,7 +946,6 @@
             nav.innerHTML = html;
         }
 
-        // Cambia modulo attivo
         async function setActiveModule(module) {
             activeModule = module;
             searchTerm = '';
@@ -800,7 +954,6 @@
             await renderContent();
         }
 
-        // Render contenuto principale
         async function renderContent() {
             if (activeModule === 'dashboard') {
                 await renderDashboard();
@@ -809,7 +962,6 @@
             }
         }
 
-        // Dashboard
         async function renderDashboard() {
             const content = document.getElementById('mainContent');
             content.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento statistiche...</div>';
@@ -859,7 +1011,6 @@
             `;
         }
 
-        // Tabella dati con paginazione
         async function renderDataTable(module) {
             const content = document.getElementById('mainContent');
             content.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento dati...</div>';
@@ -873,7 +1024,9 @@
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <input type="text" class="search-bar" placeholder="🔍 Cerca..." 
                                value="${searchTerm}" oninput="handleSearch(this.value)">
-                        <button class="btn btn-success" onclick="showEditModal('${module}', null)">
+                        ${module === 'vendite' ? 
+                            '<button class="btn btn-success" onclick="showPOS()">💰 Nuova Vendita</button>' : ''}
+                        <button class="btn btn-primary" onclick="showEditModal('${module}', null)">
                             ➕ Aggiungi
                         </button>
                         <button class="btn btn-secondary" onclick="exportModuleCSV('${module}')">
@@ -933,20 +1086,17 @@
             `;
         }
 
-        // Cambia pagina
         async function changePage(page) {
             currentPage = page;
             await renderDataTable(activeModule);
         }
 
-        // Handle search
         async function handleSearch(term) {
             searchTerm = term;
             currentPage = 1;
             await renderDataTable(activeModule);
         }
 
-        // Mostra modal edit
         function showEditModal(module, item) {
             editingItem = { module, data: item };
             const template = sectorTemplates[config.sector][module];
@@ -978,7 +1128,6 @@
             };
         }
 
-        // Salva item
         async function saveItem() {
             const form = document.getElementById('editForm');
             const formData = new FormData(form);
@@ -991,10 +1140,8 @@
             let success = false;
 
             if (editingItem.data && editingItem.data.id) {
-                // Update
                 success = await updateItem(editingItem.module, editingItem.data.id, newItem);
             } else {
-                // Create
                 success = await addItem(editingItem.module, newItem);
             }
 
@@ -1006,7 +1153,6 @@
             }
         }
 
-        // Elimina item
         async function handleDelete(module, id) {
             if (confirm('Sei sicuro di voler eliminare questo elemento?')) {
                 const success = await deleteItem(module, id);
@@ -1018,7 +1164,246 @@
             }
         }
 
-        // Export dati completi
+        // ==========================================
+        // LOGICA POS (PUNTO VENDITA) AGGIORNATA
+        // ==========================================
+
+        function showPOS() {
+            cart = [];
+            renderPOSCustomers();
+            renderPOSProducts();
+            renderCart();
+            showModal('posModal');
+        }
+
+        function renderPOSCustomers() {
+            const select = document.getElementById('posCustomer');
+            db.clienti.toArray().then(clienti => {
+                select.innerHTML = '<option value="">Cliente Generico</option>' +
+                    clienti.map(c => `<option value="${c.nome || c.azienda}">${c.nome || c.azienda}</option>`).join('');
+            });
+        }
+
+        async function renderPOSProducts() {
+            const searchTerm = document.getElementById('posSearch').value.toLowerCase();
+            let products = await db.prodotti.toArray();
+
+            products = products.filter(p => {
+                if (!searchTerm) return true;
+                return Object.values(p).some(val =>
+                    String(val).toLowerCase().includes(searchTerm)
+                );
+            });
+
+            const container = document.getElementById('posProducts');
+            if (products.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><p>Nessun prodotto disponibile</p></div>';
+                return;
+            }
+
+            container.innerHTML = products.map(product => {
+                const name = product.nome || product.piatto || product.articolo || product.servizio;
+                const price = parseFloat(product.prezzo || product.tariffa_oraria || 0);
+                const stock = parseInt(product.quantita || product.stock || 0);
+                
+                const isOutOfStock = stock <= 0 && product.categoria !== 'Servizi';
+                const stockStyle = isOutOfStock ? 'opacity: 0.5;' : '';
+
+                return `
+                    <div class="product-card" style="${stockStyle}" onclick='addToCart(${JSON.stringify(product).replace(/'/g, "&apos;")})'>
+                        <h4>${name}</h4>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="product-price">${config.currency}${price.toFixed(2)}</span>
+                            <small style="color: #666;">Stock: ${stock}</small>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function addToCart(product) {
+            const existing = cart.find(item => item.id === product.id);
+            const currentStock = parseInt(product.quantita || product.stock || 9999);
+            const currentQtyInCart = existing ? existing.quantity : 0;
+            
+            if (currentQtyInCart >= currentStock && product.categoria !== 'Servizi') {
+                alert("⚠️ Quantità massima in magazzino raggiunta.");
+                return; 
+            }
+
+            if (existing) {
+                existing.quantity++;
+            } else {
+                cart.push({ ...product, quantity: 1, discount: 0 });
+            }
+            renderCart();
+        }
+
+        function updateCartQuantity(productId, change) {
+            const item = cart.find(i => i.id === productId);
+            if (item) {
+                if (change > 0) {
+                    const currentStock = parseInt(item.quantita || item.stock || 9999);
+                    if (item.quantity >= currentStock && item.categoria !== 'Servizi') {
+                        alert("Stock esaurito!");
+                        return;
+                    }
+                }
+                item.quantity += change;
+                if (item.quantity <= 0) {
+                    cart = cart.filter(i => i.id !== productId);
+                }
+            }
+            renderCart();
+        }
+
+        function updateCartDiscount(productId, value) {
+            const item = cart.find(i => i.id === productId);
+            let discount = parseFloat(value);
+            
+            if (isNaN(discount) || discount < 0) discount = 0;
+            if (discount > 100) discount = 100;
+
+            if (item) {
+                item.discount = discount;
+            }
+            renderCart();
+        }
+
+        function removeFromCart(productId) {
+            cart = cart.filter(i => i.id !== productId);
+            renderCart();
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cartItems');
+            
+            const total = cart.reduce((sum, item) => {
+                const price = parseFloat(item.prezzo || item.tariffa_oraria || 0);
+                const discountedPrice = price * (1 - (item.discount || 0) / 100);
+                return sum + (discountedPrice * item.quantity);
+            }, 0);
+
+            document.getElementById('cartTotal').textContent = `${config.currency}${total.toFixed(2)}`;
+
+            if (cart.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🛒</div><p>Carrello vuoto</p></div>';
+                return;
+            }
+
+            container.innerHTML = cart.map(item => {
+                const name = item.nome || item.piatto || item.articolo || item.servizio;
+                const price = parseFloat(item.prezzo || item.tariffa_oraria || 0);
+                const discount = item.discount || 0;
+                const finalUnitTestPrice = price * (1 - discount / 100);
+                const lineTotal = finalUnitTestPrice * item.quantity;
+
+                return `
+                    <div class="cart-item">
+                        <div class="cart-item-header">
+                            <strong>${name}</strong>
+                            <button class="icon-btn icon-btn-delete" onclick="removeFromCart(${item.id})" 
+                                    style="padding: 2px 6px; font-size: 12px;">✕</button>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                            <div class="quantity-controls">
+                                <button class="quantity-btn" onclick="updateCartQuantity(${item.id}, -1)">-</button>
+                                <span style="min-width: 25px; text-align: center; font-weight: bold;">${item.quantity}</span>
+                                <button class="quantity-btn" onclick="updateCartQuantity(${item.id}, 1)">+</button>
+                            </div>
+
+                            <div class="discount-input-group">
+                                <label>Sconto %</label>
+                                <input type="number" class="discount-input" min="0" max="100" 
+                                       value="${discount}" 
+                                       onchange="updateCartDiscount(${item.id}, this.value)">
+                            </div>
+
+                            <div class="cart-item-price-block">
+                                ${discount > 0 ? `<small class="original-price">${config.currency}${price.toFixed(2)}</small>` : ''}
+                                <strong style="font-size: 16px; color: #667eea;">${config.currency}${lineTotal.toFixed(2)}</strong>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function completeSale() {
+            if (cart.length === 0) {
+                alert('Aggiungi almeno un prodotto al carrello');
+                return;
+            }
+
+            const customer = document.getElementById('posCustomer').value || 'Cliente Generico';
+            
+            const total = cart.reduce((sum, item) => {
+                const price = parseFloat(item.prezzo || item.tariffa_oraria || 0);
+                const discountedPrice = price * (1 - (item.discount || 0) / 100);
+                return sum + (discountedPrice * item.quantity);
+            }, 0);
+
+            const productDetails = cart.map(item => {
+                const name = item.nome || item.piatto || item.articolo || item.servizio;
+                const discountTxt = item.discount > 0 ? ` (-${item.discount}%)` : '';
+                return `${name} x${item.quantity}${discountTxt}`;
+            }).join(', ');
+
+            const sale = {
+                cliente: customer,
+                prodotto: productDetails,
+                quantita: cart.reduce((sum, item) => sum + item.quantity, 0),
+                totale: total.toFixed(2),
+                data: new Date().toISOString().split('T')[0],
+                items_detail: cart
+            };
+
+            try {
+                sale.searchTerms = generateSearchTerms(sale);
+                await db.vendite.add(sale);
+
+                // Aggiornamento Stock
+                for (let item of cart) {
+                    if (item.categoria !== 'Servizi') {
+                        const productInDb = await db.prodotti.get(item.id);
+                        if (productInDb) {
+                            let currentQty = parseInt(productInDb.quantita || productInDb.stock || 0);
+                            let newQty = currentQty - item.quantity;
+                            
+                            const updates = {};
+                            if (productInDb.quantita !== undefined) updates.quantita = newQty;
+                            if (productInDb.stock !== undefined) updates.stock = newQty;
+                            
+                            await db.prodotti.update(item.id, updates);
+                        }
+                    }
+                }
+                
+                closePOS();
+                alert('✅ Vendita completata e magazzino aggiornato!');
+                
+                if(activeModule === 'vendite' || activeModule === 'prodotti') {
+                    await renderDataTable(activeModule);
+                } else if (activeModule === 'dashboard') {
+                    await renderDashboard();
+                }
+
+            } catch (e) {
+                console.error(e);
+                alert("Errore durante il salvataggio della vendita");
+            }
+        }
+
+        function closePOS() {
+            cart = [];
+            closeModal('posModal');
+        }
+
+        // ========================================
+        // UTILITIES & EXPORT
+        // ========================================
+
         async function exportData() {
             try {
                 const allData = {
@@ -1044,7 +1429,6 @@
             }
         }
 
-        // Import dati
         async function importData(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -1055,20 +1439,17 @@
                     const imported = JSON.parse(e.target.result);
                     
                     if (confirm('Questa operazione sostituirà tutti i dati attuali. Continuare?')) {
-                        // Cancella database
                         await clearDatabase(false);
                         
-                        // Importa config
                         if (imported.config) {
                             config = imported.config;
                             await saveConfig();
                         }
                         
-                        // Importa dati
                         for (let module of ['clienti', 'prodotti', 'vendite', 'documenti']) {
                             if (imported[module] && Array.isArray(imported[module])) {
                                 for (let item of imported[module]) {
-                                    delete item.id; // Lascia che IndexedDB generi nuovi ID
+                                    delete item.id;
                                     await addItem(module, item);
                                 }
                             }
@@ -1085,7 +1466,6 @@
             reader.readAsText(file);
         }
 
-        // Export CSV singolo modulo
         async function exportModuleCSV(module) {
             try {
                 const items = await getAllItems(module);
@@ -1107,44 +1487,41 @@
                 a.href = url;
                 a.download = `${module}_${Date.now()}.csv`;
                 a.click();
-
-                alert('✅ CSV esportato con successo!');
             } catch (error) {
                 console.error('Errore export CSV:', error);
                 alert('❌ Errore durante l\'export CSV');
             }
         }
 
-        // Cancella database
         async function clearDatabase(confirm = true) {
-            if (confirm && !window.confirm('⚠️ Questa operazione cancellerà TUTTI i dati in modo permanente. Sei sicuro?')) {
+            if (confirm && !window.confirm('⚠️ Questa operazione cancellerà TUTTI i dati. Sei sicuro?')) {
                 return;
             }
-
             try {
                 await db.clienti.clear();
                 await db.prodotti.clear();
                 await db.vendite.clear();
                 await db.documenti.clear();
-                
                 if (confirm) {
                     await init();
-                    alert('✅ Database svuotato con successo!');
+                    alert('✅ Database svuotato!');
                 }
             } catch (error) {
                 console.error('Errore cancellazione DB:', error);
-                alert('❌ Errore durante la cancellazione');
             }
         }
 
-        // Mostra statistiche database
         async function showDBStats() {
             try {
                 const counts = await getCounts();
-                const estimate = await navigator.storage.estimate();
-                const usageInMB = (estimate.usage / 1024 / 1024).toFixed(2);
-                const quotaInMB = (estimate.quota / 1024 / 1024).toFixed(2);
-                const percentUsed = ((estimate.usage / estimate.quota) * 100).toFixed(2);
+                let usageInfo = "Dati non disponibili";
+                
+                if (navigator.storage && navigator.storage.estimate) {
+                    const estimate = await navigator.storage.estimate();
+                    const usageInMB = (estimate.usage / 1024 / 1024).toFixed(2);
+                    const percentUsed = ((estimate.usage / estimate.quota) * 100).toFixed(2);
+                    usageInfo = `<strong>Usato:</strong> ${usageInMB} MB (${percentUsed}%)`;
+                }
 
                 document.getElementById('statsContent').innerHTML = `
                     <div style="padding: 20px;">
@@ -1157,32 +1534,18 @@
                                 <div><strong>Documenti:</strong> ${counts.documenti}</div>
                             </div>
                         </div>
-
                         <h4 style="margin-bottom: 15px;">💾 Spazio Disco</h4>
                         <div style="background: #f9fafb; padding: 15px; border-radius: 8px;">
-                            <p><strong>Usato:</strong> ${usageInMB} MB</p>
-                            <p><strong>Disponibile:</strong> ${quotaInMB} MB</p>
-                            <p><strong>Percentuale:</strong> ${percentUsed}%</p>
-                            <div style="background: #e5e7eb; height: 20px; border-radius: 10px; margin-top: 10px; overflow: hidden;">
-                                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100%; width: ${percentUsed}%; transition: width 0.3s;"></div>
-                            </div>
-                        </div>
-
-                        <div style="margin-top: 20px; padding: 15px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 8px;">
-                            <strong>ℹ️ Info IndexedDB:</strong><br>
-                            IndexedDB può memorizzare fino al 50% dello spazio disco disponibile (solitamente diversi GB), molto più di localStorage (5MB).
+                            ${usageInfo}
                         </div>
                     </div>
                 `;
-
                 showModal('statsModal');
             } catch (error) {
                 console.error('Errore statistiche:', error);
-                alert('❌ Errore lettura statistiche');
             }
         }
 
-        // Configurazione
         function showConfigModal() {
             document.getElementById('configBusinessName').value = config.businessName;
             document.getElementById('configSector').value = config.sector;
@@ -1200,7 +1563,6 @@
             };
         }
 
-        // Modal utilities
         function showModal(id) {
             document.getElementById(id).classList.add('show');
         }
@@ -1209,14 +1571,13 @@
             document.getElementById(id).classList.remove('show');
         }
 
-        // Chiudi modal cliccando fuori
         window.onclick = (event) => {
             if (event.target.classList.contains('modal')) {
                 event.target.classList.remove('show');
             }
         };
 
-        // Inizializza app
+        // Avvio
         init();
     </script>
 </body>
