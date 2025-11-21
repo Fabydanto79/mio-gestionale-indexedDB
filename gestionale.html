@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestionale Pro - IndexedDB</title>
+    
+    <!-- Dexie.js - Wrapper semplificato per IndexedDB -->
+    <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 28px;
+        }
+
+        .db-status {
+            background: #10b981;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        /* Layout */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 20px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            height: fit-content;
+        }
+
+        .nav-item {
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+            color: #4b5563;
+        }
+
+        .nav-item:hover {
+            background: #f3f4f6;
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        /* Content */
+        .content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            min-height: 500px;
+        }
+
+        /* Dashboard Cards */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .stat-card h3 {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 36px;
+            font-weight: bold;
+        }
+
+        /* Table */
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .table-header h2 {
+            font-size: 24px;
+            color: #1f2937;
+        }
+
+        .search-bar {
+            padding: 10px 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            width: 300px;
+            font-size: 14px;
+        }
+
+        .search-bar:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .pagination {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid #e5e7eb;
+            background: white;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: #f3f4f6;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination button.active {
+            background: #667eea;
+            color: white;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th {
+            background: #f9fafb;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 10px;
+        }
+
+        .icon-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .icon-btn-edit {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .icon-btn-delete {
+            background: #ef4444;
+            color: white;
+        }
+
+        .icon-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            font-size: 24px;
+            color: #1f2937;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #6b7280;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #374151;
+            text-transform: capitalize;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 10px 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #9ca3af;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1 id="businessName">Gestionale Pro - IndexedDB</h1>
+                <div class="db-status">🗄️ IndexedDB Attivo</div>
+            </div>
+            <div class="header-buttons">
+                <button class="btn btn-warning" onclick="showDBStats()">
+                    📊 Statistiche DB
+                </button>
+                <button class="btn btn-primary" onclick="exportData()">
+                    💾 Esporta
+                </button>
+                <label class="btn btn-secondary" style="cursor: pointer;">
+                    📥 Importa
+                    <input type="file" accept=".json" onchange="importData(event)" style="display: none;">
+                </label>
+                <button class="btn btn-danger" onclick="clearDatabase()">
+                    🗑️ Cancella DB
+                </button>
+                <button class="btn btn-primary" onclick="showConfigModal()">
+                    ⚙️ Impostazioni
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Layout -->
+        <div class="main-layout">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <nav id="navigation"></nav>
+            </div>
+
+            <!-- Content -->
+            <div class="content" id="mainContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Caricamento database...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Nuovo Elemento</h3>
+                <button class="close-btn" onclick="closeModal('editModal')">&times;</button>
+            </div>
+            <form id="editForm">
+                <div class="form-grid" id="formFields"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('editModal')">Annulla</button>
+                    <button type="submit" class="btn btn-primary">💾 Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="configModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Configurazione</h3>
+                <button class="close-btn" onclick="closeModal('configModal')">&times;</button>
+            </div>
+            <form id="configForm">
+                <div class="form-group">
+                    <label>Nome Azienda</label>
+                    <input type="text" id="configBusinessName" required>
+                </div>
+                <div class="form-group">
+                    <label>Settore</label>
+                    <select id="configSector">
+                        <option value="generale">Generale</option>
+                        <option value="ristorante">Ristorante/Bar</option>
+                        <option value="negozio">Negozio/Retail</option>
+                        <option value="servizi">Servizi/Consulenza</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Valuta</label>
+                    <select id="configCurrency">
+                        <option value="€">Euro (€)</option>
+                        <option value="$">Dollaro ($)</option>
+                        <option value="£">Sterlina (£)</option>
+                        <option value="CHF">Franco Svizzero (CHF)</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('configModal')">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva Configurazione</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="statsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📊 Statistiche Database</h3>
+                <button class="close-btn" onclick="closeModal('statsModal')">&times;</button>
+            </div>
+            <div id="statsContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // ========================================
+        // CONFIGURAZIONE INDEXEDDB CON DEXIE.JS
+        // ========================================
+
+        // Inizializza database Dexie
+        const db = new Dexie('GestionaleProDB');
+
+        // Definizione schema database (versione 1)
+        db.version(1).stores({
+            config: 'key',
+            clienti: '++id, nome, email, telefono, *searchTerms',
+            prodotti: '++id, nome, prezzo, categoria, *searchTerms',
+            vendite: '++id, cliente, data, totale, *searchTerms',
+            documenti: '++id, tipo, numero, cliente, data, *searchTerms'
+        });
+
+        // Template settori
+        const sectorTemplates = {
+            generale: {
+                clienti: ['nome', 'email', 'telefono', 'indirizzo', 'note'],
+                prodotti: ['nome', 'descrizione', 'prezzo', 'quantita', 'categoria'],
+                vendite: ['cliente', 'prodotto', 'quantita', 'totale', 'data'],
+                documenti: ['tipo', 'numero', 'cliente', 'importo', 'data']
+            },
+            ristorante: {
+                clienti: ['nome', 'telefono', 'email', 'preferenze', 'allergie'],
+                prodotti: ['piatto', 'categoria', 'prezzo', 'ingredienti', 'disponibile'],
+                vendite: ['tavolo', 'ordine', 'totale', 'data', 'stato'],
+                documenti: ['tipo', 'numero', 'tavolo', 'importo', 'data']
+            },
+            negozio: {
+                clienti: ['nome', 'carta_fedelta', 'email', 'telefono', 'punti'],
+                prodotti: ['articolo', 'codice', 'prezzo', 'stock', 'fornitore'],
+                vendite: ['cliente', 'articoli', 'totale', 'pagamento', 'data'],
+                documenti: ['tipo', 'numero', 'cliente', 'importo', 'data']
+            },
+            servizi: {
+                clienti: ['azienda', 'referente', 'email', 'telefono', 'contratto'],
+                prodotti: ['servizio', 'descrizione', 'tariffa_oraria', 'ore_stimate'],
+                vendite: ['cliente', 'servizio', 'ore', 'totale', 'data'],
+                documenti: ['tipo', 'numero', 'cliente', 'importo', 'data']
+            }
+        };
+
+        const moduleIcons = {
+            dashboard: '📊',
+            clienti: '👥',
+            prodotti: '📦',
+            vendite: '💰',
+            documenti: '📄'
+        };
+
+        // Stato applicazione
+        let config = {
+            businessName: 'Gestionale Pro',
+            sector: 'generale',
+            modules: ['clienti', 'prodotti', 'vendite', 'documenti'],
+            currency: '€'
+        };
+
+        let activeModule = 'dashboard';
+        let editingItem = null;
+        let searchTerm = '';
+        let currentPage = 1;
+        let itemsPerPage = 20;
+
+        // ========================================
+        // FUNZIONI DATABASE INDEXEDDB
+        // ========================================
+
+        // Carica configurazione dal database
+        async function loadConfig() {
+            try {
+                const savedConfig = await db.config.get('app');
+                if (savedConfig) {
+                    config = savedConfig.value;
+                } else {
+                    // Salva config default
+                    await db.config.put({ key: 'app', value: config });
+                }
+            } catch (error) {
+                console.error('Errore caricamento config:', error);
+            }
+        }
+
+        // Salva configurazione nel database
+        async function saveConfig() {
+            try {
+                await db.config.put({ key: 'app', value: config });
+            } catch (error) {
+                console.error('Errore salvataggio config:', error);
+            }
+        }
+
+        // Genera termini di ricerca per indicizzazione full-text
+        function generateSearchTerms(item) {
+            const terms = [];
+            for (let value of Object.values(item)) {
+                if (value && typeof value === 'string') {
+                    terms.push(...value.toLowerCase().split(/\s+/));
+                }
+            }
+            return [...new Set(terms)]; // Rimuovi duplicati
+        }
+
+        // CRUD Operations
+
+        // CREATE - Aggiungi elemento
+        async function addItem(module, item) {
+            try {
+                item.searchTerms = generateSearchTerms(item);
+                item.createdAt = new Date().toISOString();
+                await db[module].add(item);
+                return true;
+            } catch (error) {
+                console.error(`Errore aggiunta ${module}:`, error);
+                return false;
+            }
+        }
+
+        // READ - Leggi elementi con paginazione e ricerca
+        async function getItems(module, page = 1, search = '') {
+            try {
+                let collection = db[module];
+
+                if (search) {
+                    // Ricerca full-text usando l'indice searchTerms
+                    const searchLower = search.toLowerCase();
+                    collection = collection.where('searchTerms').equals(searchLower);
+                }
+
+                const total = await collection.count();
+                const offset = (page - 1) * itemsPerPage;
+
+                const items = await collection
+                    .offset(offset)
+                    .limit(itemsPerPage)
+                    .reverse() // Ultimi inseriti per primi
+                    .toArray();
+
+                return {
+                    items,
+                    total,
+                    pages: Math.ceil(total / itemsPerPage),
+                    currentPage: page
+                };
+            } catch (error) {
+                console.error(`Errore lettura ${module}:`, error);
+                return { items: [], total: 0, pages: 0, currentPage: 1 };
+            }
+        }
+
+        // READ ALL - Tutti gli elementi (per export/stats)
+        async function getAllItems(module) {
+            try {
+                return await db[module].toArray();
+            } catch (error) {
+                console.error(`Errore lettura completa ${module}:`, error);
+                return [];
+            }
+        }
+
+        // UPDATE - Aggiorna elemento
+        async function updateItem(module, id, updates) {
+            try {
+                updates.searchTerms = generateSearchTerms(updates);
+                updates.updatedAt = new Date().toISOString();
+                await db[module].update(id, updates);
+                return true;
+            } catch (error) {
+                console.error(`Errore aggiornamento ${module}:`, error);
+                return false;
+            }
+        }
+
+        // DELETE - Elimina elemento
+        async function deleteItem(module, id) {
+            try {
+                await db[module].delete(id);
+                return true;
+            } catch (error) {
+                console.error(`Errore eliminazione ${module}:`, error);
+                return false;
+            }
+        }
+
+        // Conta elementi per dashboard
+        async function getCounts() {
+            try {
+                return {
+                    clienti: await db.clienti.count(),
+                    prodotti: await db.prodotti.count(),
+                    vendite: await db.vendite.count(),
+                    documenti: await db.documenti.count()
+                };
+            } catch (error) {
+                console.error('Errore conteggio:', error);
+                return { clienti: 0, prodotti: 0, vendite: 0, documenti: 0 };
+            }
+        }
+
+        // Calcola totale vendite
+        async function getTotalSales() {
+            try {
+                const vendite = await db.vendite.toArray();
+                return vendite.reduce((sum, v) => sum + (parseFloat(v.totale) || 0), 0);
+            } catch (error) {
+                console.error('Errore calcolo vendite:', error);
+                return 0;
+            }
+        }
+
+        // ========================================
+        // UI RENDERING
+        // ========================================
+
+        // Inizializzazione
+        async function init() {
+            try {
+                await loadConfig();
+                renderNavigation();
+                await renderContent();
+                document.getElementById('businessName').textContent = config.businessName;
+            } catch (error) {
+                console.error('Errore inizializzazione:', error);
+                document.getElementById('mainContent').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <p>Errore caricamento database</p>
+                        <button class="btn btn-primary" onclick="location.reload()">Ricarica Pagina</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Render navigazione
+        function renderNavigation() {
+            const nav = document.getElementById('navigation');
+            let html = `
+                <div class="nav-item ${activeModule === 'dashboard' ? 'active' : ''}" 
+                     onclick="setActiveModule('dashboard')">
+                    <span>${moduleIcons.dashboard}</span>
+                    Dashboard
+                </div>
+            `;
+
+            config.modules.forEach(module => {
+                html += `
+                    <div class="nav-item ${activeModule === module ? 'active' : ''}" 
+                         onclick="setActiveModule('${module}')">
+                        <span>${moduleIcons[module]}</span>
+                        ${module.charAt(0).toUpperCase() + module.slice(1)}
+                    </div>
+                `;
+            });
+
+            nav.innerHTML = html;
+        }
+
+        // Cambia modulo attivo
+        async function setActiveModule(module) {
+            activeModule = module;
+            searchTerm = '';
+            currentPage = 1;
+            renderNavigation();
+            await renderContent();
+        }
+
+        // Render contenuto principale
+        async function renderContent() {
+            if (activeModule === 'dashboard') {
+                await renderDashboard();
+            } else {
+                await renderDataTable(activeModule);
+            }
+        }
+
+        // Dashboard
+        async function renderDashboard() {
+            const content = document.getElementById('mainContent');
+            content.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento statistiche...</div>';
+
+            const counts = await getCounts();
+            const totalSales = await getTotalSales();
+            const recentSales = await db.vendite.reverse().limit(5).toArray();
+
+            content.innerHTML = `
+                <h2 style="margin-bottom: 20px;">Dashboard</h2>
+                <div class="dashboard-grid">
+                    <div class="stat-card">
+                        <h3>Clienti Totali</h3>
+                        <div class="value">${counts.clienti}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Prodotti/Servizi</h3>
+                        <div class="value">${counts.prodotti}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Vendite</h3>
+                        <div class="value">${counts.vendite}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Totale Vendite</h3>
+                        <div class="value">${config.currency}${totalSales.toFixed(2)}</div>
+                    </div>
+                </div>
+
+                <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h3 style="margin-bottom: 15px;">📈 Ultime Vendite</h3>
+                    ${recentSales.length === 0 ? 
+                        '<div class="empty-state"><div class="empty-state-icon">📊</div><p>Nessuna vendita registrata</p></div>' :
+                        recentSales.map(v => `
+                            <div style="display: flex; justify-content: space-between; padding: 15px; background: #f9fafb; border-radius: 8px; margin-bottom: 10px;">
+                                <div>
+                                    <strong>${v.cliente || v.prodotto}</strong><br>
+                                    <small style="color: #6b7280;">${v.data}</small>
+                                </div>
+                                <div style="font-size: 20px; font-weight: bold; color: #667eea;">
+                                    ${config.currency}${v.totale}
+                                </div>
+                            </div>
+                        `).join('')
+                    }
+                </div>
+            `;
+        }
+
+        // Tabella dati con paginazione
+        async function renderDataTable(module) {
+            const content = document.getElementById('mainContent');
+            content.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento dati...</div>';
+
+            const result = await getItems(module, currentPage, searchTerm);
+            const template = sectorTemplates[config.sector][module];
+
+            content.innerHTML = `
+                <div class="table-header">
+                    <h2>${module.charAt(0).toUpperCase() + module.slice(1)} (${result.total})</h2>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <input type="text" class="search-bar" placeholder="🔍 Cerca..." 
+                               value="${searchTerm}" oninput="handleSearch(this.value)">
+                        <button class="btn btn-success" onclick="showEditModal('${module}', null)">
+                            ➕ Aggiungi
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportModuleCSV('${module}')">
+                            💾 Export CSV
+                        </button>
+                    </div>
+                </div>
+
+                ${result.items.length === 0 ? 
+                    '<div class="empty-state"><div class="empty-state-icon">📭</div><p>Nessun elemento trovato</p></div>' :
+                    `<table>
+                        <thead>
+                            <tr>
+                                ${template.map(field => `<th>${field.replace('_', ' ').toUpperCase()}</th>`).join('')}
+                                <th style="text-align: right;">AZIONI</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${result.items.map(item => `
+                                <tr>
+                                    ${template.map(field => `<td>${item[field] || '-'}</td>`).join('')}
+                                    <td>
+                                        <div class="action-btns" style="justify-content: flex-end;">
+                                            <button class="icon-btn icon-btn-edit" onclick='showEditModal("${module}", ${JSON.stringify(item).replace(/'/g, "&apos;")})'>
+                                                ✏️
+                                            </button>
+                                            <button class="icon-btn icon-btn-delete" onclick="handleDelete('${module}', ${item.id})">
+                                                🗑️
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    
+                    ${result.pages > 1 ? `
+                        <div class="pagination">
+                            <button onclick="changePage(1)" ${currentPage === 1 ? 'disabled' : ''}>
+                                ⏮️ Prima
+                            </button>
+                            <button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                                ◀️ Precedente
+                            </button>
+                            <span style="padding: 8px 15px;">
+                                Pagina ${currentPage} di ${result.pages}
+                            </span>
+                            <button onclick="changePage(${currentPage + 1})" ${currentPage === result.pages ? 'disabled' : ''}>
+                                Successiva ▶️
+                            </button>
+                            <button onclick="changePage(${result.pages})" ${currentPage === result.pages ? 'disabled' : ''}>
+                                Ultima ⏭️
+                            </button>
+                        </div>
+                    ` : ''}`
+                }
+            `;
+        }
+
+        // Cambia pagina
+        async function changePage(page) {
+            currentPage = page;
+            await renderDataTable(activeModule);
+        }
+
+        // Handle search
+        async function handleSearch(term) {
+            searchTerm = term;
+            currentPage = 1;
+            await renderDataTable(activeModule);
+        }
+
+        // Mostra modal edit
+        function showEditModal(module, item) {
+            editingItem = { module, data: item };
+            const template = sectorTemplates[config.sector][module];
+
+            document.getElementById('modalTitle').textContent = 
+                item ? `Modifica ${module}` : `Nuovo ${module}`;
+
+            const formFields = document.getElementById('formFields');
+            formFields.innerHTML = template.map(field => {
+                const value = item ? (item[field] || '') : '';
+                const type = field.includes('prezzo') || field.includes('totale') || field.includes('importo') || field.includes('quantita') || field.includes('stock') || field.includes('ore') || field.includes('tariffa') ? 'number' :
+                           field.includes('data') ? 'date' :
+                           field.includes('email') ? 'email' : 'text';
+
+                return `
+                    <div class="form-group">
+                        <label>${field.replace('_', ' ')}</label>
+                        <input type="${type}" name="${field}" value="${value}" 
+                               ${type === 'number' ? 'step="0.01" min="0"' : ''}>
+                    </div>
+                `;
+            }).join('');
+
+            showModal('editModal');
+
+            document.getElementById('editForm').onsubmit = async (e) => {
+                e.preventDefault();
+                await saveItem();
+            };
+        }
+
+        // Salva item
+        async function saveItem() {
+            const form = document.getElementById('editForm');
+            const formData = new FormData(form);
+            const newItem = {};
+
+            for (let [key, value] of formData.entries()) {
+                newItem[key] = value;
+            }
+
+            let success = false;
+
+            if (editingItem.data && editingItem.data.id) {
+                // Update
+                success = await updateItem(editingItem.module, editingItem.data.id, newItem);
+            } else {
+                // Create
+                success = await addItem(editingItem.module, newItem);
+            }
+
+            if (success) {
+                closeModal('editModal');
+                await renderContent();
+            } else {
+                alert('Errore durante il salvataggio');
+            }
+        }
+
+        // Elimina item
+        async function handleDelete(module, id) {
+            if (confirm('Sei sicuro di voler eliminare questo elemento?')) {
+                const success = await deleteItem(module, id);
+                if (success) {
+                    await renderContent();
+                } else {
+                    alert('Errore durante l\'eliminazione');
+                }
+            }
+        }
+
+        // Export dati completi
+        async function exportData() {
+            try {
+                const allData = {
+                    config,
+                    clienti: await getAllItems('clienti'),
+                    prodotti: await getAllItems('prodotti'),
+                    vendite: await getAllItems('vendite'),
+                    documenti: await getAllItems('documenti'),
+                    exportDate: new Date().toISOString()
+                };
+
+                const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `gestionale_backup_${Date.now()}.json`;
+                a.click();
+                
+                alert('✅ Dati esportati con successo!');
+            } catch (error) {
+                console.error('Errore export:', error);
+                alert('❌ Errore durante l\'export');
+            }
+        }
+
+        // Import dati
+        async function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    
+                    if (confirm('Questa operazione sostituirà tutti i dati attuali. Continuare?')) {
+                        // Cancella database
+                        await clearDatabase(false);
+                        
+                        // Importa config
+                        if (imported.config) {
+                            config = imported.config;
+                            await saveConfig();
+                        }
+                        
+                        // Importa dati
+                        for (let module of ['clienti', 'prodotti', 'vendite', 'documenti']) {
+                            if (imported[module] && Array.isArray(imported[module])) {
+                                for (let item of imported[module]) {
+                                    delete item.id; // Lascia che IndexedDB generi nuovi ID
+                                    await addItem(module, item);
+                                }
+                            }
+                        }
+                        
+                        await init();
+                        alert('✅ Dati importati con successo!');
+                    }
+                } catch (err) {
+                    console.error('Errore import:', err);
+                    alert('❌ Errore nell\'importazione del file');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Export CSV singolo modulo
+        async function exportModuleCSV(module) {
+            try {
+                const items = await getAllItems(module);
+                if (items.length === 0) {
+                    alert('Nessun dato da esportare');
+                    return;
+                }
+
+                const template = sectorTemplates[config.sector][module];
+                const headers = template.join(',');
+                const rows = items.map(item =>
+                    template.map(field => `"${String(item[field] || '').replace(/"/g, '""')}"`).join(',')
+                );
+
+                const csv = [headers, ...rows].join('\n');
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${module}_${Date.now()}.csv`;
+                a.click();
+
+                alert('✅ CSV esportato con successo!');
+            } catch (error) {
+                console.error('Errore export CSV:', error);
+                alert('❌ Errore durante l\'export CSV');
+            }
+        }
+
+        // Cancella database
+        async function clearDatabase(confirm = true) {
+            if (confirm && !window.confirm('⚠️ Questa operazione cancellerà TUTTI i dati in modo permanente. Sei sicuro?')) {
+                return;
+            }
+
+            try {
+                await db.clienti.clear();
+                await db.prodotti.clear();
+                await db.vendite.clear();
+                await db.documenti.clear();
+                
+                if (confirm) {
+                    await init();
+                    alert('✅ Database svuotato con successo!');
+                }
+            } catch (error) {
+                console.error('Errore cancellazione DB:', error);
+                alert('❌ Errore durante la cancellazione');
+            }
+        }
+
+        // Mostra statistiche database
+        async function showDBStats() {
+            try {
+                const counts = await getCounts();
+                const estimate = await navigator.storage.estimate();
+                const usageInMB = (estimate.usage / 1024 / 1024).toFixed(2);
+                const quotaInMB = (estimate.quota / 1024 / 1024).toFixed(2);
+                const percentUsed = ((estimate.usage / estimate.quota) * 100).toFixed(2);
+
+                document.getElementById('statsContent').innerHTML = `
+                    <div style="padding: 20px;">
+                        <h4 style="margin-bottom: 15px;">📊 Conteggio Record</h4>
+                        <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div><strong>Clienti:</strong> ${counts.clienti}</div>
+                                <div><strong>Prodotti:</strong> ${counts.prodotti}</div>
+                                <div><strong>Vendite:</strong> ${counts.vendite}</div>
+                                <div><strong>Documenti:</strong> ${counts.documenti}</div>
+                            </div>
+                        </div>
+
+                        <h4 style="margin-bottom: 15px;">💾 Spazio Disco</h4>
+                        <div style="background: #f9fafb; padding: 15px; border-radius: 8px;">
+                            <p><strong>Usato:</strong> ${usageInMB} MB</p>
+                            <p><strong>Disponibile:</strong> ${quotaInMB} MB</p>
+                            <p><strong>Percentuale:</strong> ${percentUsed}%</p>
+                            <div style="background: #e5e7eb; height: 20px; border-radius: 10px; margin-top: 10px; overflow: hidden;">
+                                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100%; width: ${percentUsed}%; transition: width 0.3s;"></div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 20px; padding: 15px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 8px;">
+                            <strong>ℹ️ Info IndexedDB:</strong><br>
+                            IndexedDB può memorizzare fino al 50% dello spazio disco disponibile (solitamente diversi GB), molto più di localStorage (5MB).
+                        </div>
+                    </div>
+                `;
+
+                showModal('statsModal');
+            } catch (error) {
+                console.error('Errore statistiche:', error);
+                alert('❌ Errore lettura statistiche');
+            }
+        }
+
+        // Configurazione
+        function showConfigModal() {
+            document.getElementById('configBusinessName').value = config.businessName;
+            document.getElementById('configSector').value = config.sector;
+            document.getElementById('configCurrency').value = config.currency;
+            showModal('configModal');
+
+            document.getElementById('configForm').onsubmit = async (e) => {
+                e.preventDefault();
+                config.businessName = document.getElementById('configBusinessName').value;
+                config.sector = document.getElementById('configSector').value;
+                config.currency = document.getElementById('configCurrency').value;
+                await saveConfig();
+                closeModal('configModal');
+                await init();
+            };
+        }
+
+        // Modal utilities
+        function showModal(id) {
+            document.getElementById(id).classList.add('show');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('show');
+        }
+
+        // Chiudi modal cliccando fuori
+        window.onclick = (event) => {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('show');
+            }
+        };
+
+        // Inizializza app
+        init();
+    </script>
+</body>
+</html>
